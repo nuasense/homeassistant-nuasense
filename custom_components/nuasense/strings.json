@@ -1,0 +1,28 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to NuaSense",
+        "description": "An API key from platform.nuasense.com → API Keys, with the ingest:write scope. It only reads your own stations here.",
+        "data": {
+          "api_key": "API key",
+          "base_url": "API address"
+        }
+      },
+      "station": {
+        "title": "Which station?",
+        "data": {
+          "station_id": "Station"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "NuaSense did not accept this key.",
+      "cannot_connect": "NuaSense could not be reached.",
+      "no_stations": "This account has no stations yet. Add one in the console under External stations."
+    },
+    "abort": {
+      "already_configured": "This station is already set up."
+    }
+  }
+}
