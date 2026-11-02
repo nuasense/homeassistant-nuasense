@@ -1,12 +1,14 @@
 {
   "domain": "nuasense",
   "name": "NuaSense",
-  "codeowners": ["@nuasense"],
+  "codeowners": [
+    "@nuasense"
+  ],
   "config_flow": true,
   "documentation": "https://github.com/nuasense/homeassistant-nuasense",
   "integration_type": "device",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/nuasense/homeassistant-nuasense/issues",
   "requirements": [],
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
