@@ -27,7 +27,13 @@ class NuaSenseApi:
         self._key = api_key.strip()
         self._base = base_url.rstrip("/")
 
-    async def _get(self, path: str) -> Any:
+    async def _get(self, path: str) -> dict[str, Any]:
+        """GET a path and return its JSON object.
+
+        Every way the request can fail — a timeout, a connection error, a proxy
+        answering with an HTML page, a body that is not a JSON object — becomes
+        a NuaSenseError, so callers handle one exception type.
+        """
         headers = {"Authorization": f"Bearer {self._key}", "Accept": "application/json"}
         try:
             async with self._session.get(
@@ -35,18 +41,24 @@ class NuaSenseApi:
             ) as res:
                 if res.status in (401, 403):
                     raise NuaSenseAuthError("NuaSense did not accept the API key")
-                body = await res.json(content_type=None)
+                decoded = await res.json(content_type=None)
+                body: dict[str, Any] = decoded if isinstance(decoded, dict) else {}
                 if res.status == 409:
-                    raise NuaSenseNoPositionError(body.get("error") or "no position")
+                    raise NuaSenseNoPositionError(str(body.get("error") or "no position"))
                 if res.status >= 400:
-                    raise NuaSenseError(body.get("error") or body.get("message") or f"HTTP {res.status}")
+                    raise NuaSenseError(
+                        str(body.get("error") or body.get("message") or f"HTTP {res.status}")
+                    )
+                if not isinstance(decoded, dict):
+                    raise NuaSenseError("NuaSense answered with something that is not a JSON object")
                 return body
-        except aiohttp.ClientError as err:
+        except (TimeoutError, aiohttp.ClientError, ValueError) as err:
             raise NuaSenseError(f"NuaSense could not be reached: {err}") from err
 
     async def stations(self) -> list[dict[str, Any]]:
         body = await self._get("/api/nuasense/v1/ingest/stations")
-        return list(body.get("stations") or [])
+        stations = body.get("stations")
+        return [s for s in stations if isinstance(s, dict)] if isinstance(stations, list) else []
 
     async def first_look(self, station_id: str) -> dict[str, Any]:
         return await self._get(f"/api/nuasense/v1/ingest/first-look?station_id={station_id}")
@@ -55,5 +67,7 @@ class NuaSenseApi:
         body = await self._get(
             f"/api/nuasense/v1/ingest/derived?station_id={station_id}&start=-6h&limit=1"
         )
-        rows = body.get("data") or []
-        return rows[0] if rows else None
+        rows = body.get("data")
+        if isinstance(rows, list) and rows and isinstance(rows[0], dict):
+            return rows[0]
+        return None
