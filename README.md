@@ -1,8 +1,8 @@
 # NuaSense for Home Assistant
 
-What your weather station means for your crop, as Home Assistant sensors: tonight's low and whether it is a frost night, the next calm dry window for spraying, whether the station's latest reading is plausible against the model, and the hourly agronomy — ET0, leaf wetness, spray quality, VPD, delta T.
+What your weather station means for your house and garden, as Home Assistant sensors: tonight's low and whether to bring the pots in, how much the garden needs watering today after the rain that fell and the rain that is coming, and whether your station's reading is plausible.
 
-Works with any station NuaSense knows: an Ecowitt, Froggit, Ambient or Wunderground-mode console uploading directly, or anything Home Assistant already sees, forwarded in Wunderground format (see *Sending readings* below). The first three stations on a NuaSense account connect free.
+Works with any station NuaSense knows: an Ecowitt, Froggit, Ambient or Wunderground-mode console uploading directly, or anything Home Assistant already sees, forwarded in Wunderground format. The first three stations on a NuaSense account connect free.
 
 ## Install
 
@@ -14,33 +14,36 @@ Then Settings → Devices & services → Add integration → **NuaSense**.
 
 ## Set up
 
-1. In the NuaSense console make an API key under **API Keys** with the `ingest:write` scope. (Despite the name it is also what reads your own stations.)
-2. Paste it into the integration. It lists the stations on your account; pick one. One entry per station.
+1. In the NuaSense console make an API key under **API Keys** with the `ingest:write` scope (it is also what reads your own stations).
+2. Paste it into the integration and pick your station.
+3. Tell it what the garden mostly is — **lawn**, **vegetables** or **flower beds and shrubs** — and your sprinkler's rate in mm per hour (a pop-up sprinkler is about 10, a drip line 2–4; 0 if you only want millimetres).
 
 ## Sensors
 
 | Sensor | What it is |
 |---|---|
-| Tonight's low | °C, with the hour it is expected and the grass-level estimate as attributes |
-| Frost tonight | `none`, `watch` (grass level may freeze) or `frost` |
-| Next spray window | `07:00–14:00` or `none`; date, wind and the reason as attributes |
-| Station check | `plausible`, `check` or `off`: the latest reading against the model for that hour |
-| ET0 last hour | mm |
-| Leaf wetness, consecutive hours | h, with the reason |
-| Spray quality | label, with index, limiting factor and inversion risk |
-| Vapour pressure deficit | kPa |
-| Delta T | °C |
-| Temperature / humidity / pressure, hourly mean | from the station |
-| Last upload | when the station last sent, and from which device |
+| Tonight's low | °C, with the hour and a grass-level estimate as attributes |
+| Frost tonight | `none`, `watch` (grass level may freeze: pots in, cover the tender ones) or `frost` |
+| Watering today | mm your garden needs today: what it loses to evaporation, minus the rain of the last 24 hours and the rain forecast for the next 24; `0` means skip. Attributes: ET0, where it came from (your station once it has a day of data, the forecast before), both rain figures |
+| Watering time today | minutes at your sprinkler's rate — ready for an automation that opens a valve |
+| Rain next 24 h | mm forecast for your position |
+| Plausibility | `plausible` or `implausible`: your latest reading against the forecast model for that hour. It flags only differences no weather explains (more than 5 °C), like a wrong unit or a sensor indoors, and names no cause |
+| Last upload | when the station last sent, and from what |
 
-Polled every 15 minutes. The hourly values exist from the first full hour after a station starts sending; the first look needs the station to have a position.
+Watering is a daily balance, for an automation that runs once a day: water when the sensor is above 0, for the minutes it says.
+
+### Advanced
+
+Switch on **Advanced: agronomy values** for farms, vineyards and nurseries: next spray window, ET0 per hour, consecutive leaf-wetness hours, spray quality, VPD, delta T and the hourly means.
+
+Polled every 15 minutes.
 
 ## Sending readings from Home Assistant
 
-The integration reads. To send a station Home Assistant already has, add it in the NuaSense console under **External stations → Add a station** (pick *Home Assistant / weewx / Meteobridge / Node-RED*) and forward its values in Wunderground format to the path shown — for example with a `rest_command` on a time pattern, or with [node-red-contrib-nuasense](https://github.com/nuasense/node-red-contrib-nuasense). A native upload entity for this integration is planned.
+The integration reads. To send a station Home Assistant already has, add it in the NuaSense console under **External stations → Add a station** (pick *Home Assistant / weewx / Meteobridge / Node-RED*) and forward its values in Wunderground format to the path shown — for example with a `rest_command` on a time pattern, or with [node-red-contrib-nuasense](https://github.com/nuasense/node-red-contrib-nuasense).
 
 ## Your data
 
-When you connect a station, NuaSense stores its readings and computes your forecast, spray windows and risks from them. The readings are used aggregated and anonymised to improve forecasts and models for everyone; they are never passed on individually without your opt-in. You can disconnect the station in the console at any time and have all its data deleted.
+When you connect a station, NuaSense stores its readings and computes your forecast and watering from them. The readings are used aggregated and anonymised to improve forecasts and models for everyone; they are never passed on individually without your opt-in. You can disconnect the station in the console at any time and have all its data deleted.
 
 MIT licence. Issues: https://github.com/nuasense/homeassistant-nuasense/issues

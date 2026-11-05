@@ -10,9 +10,13 @@
         }
       },
       "station": {
-        "title": "Which station?",
+        "title": "Your station and your garden",
+        "description": "Watering today is worked out for what the garden mostly is. The sprinkler rate turns millimetres into minutes; use 0 if you only want millimetres. Advanced adds the agronomy values (spray window, ET0 per hour, leaf wetness, VPD, delta T).",
         "data": {
-          "station_id": "Station"
+          "station_id": "Station",
+          "plant": "The garden is mostly",
+          "sprinkler_mm_per_h": "Sprinkler rate (mm per hour)",
+          "advanced": "Advanced: agronomy values"
         }
       }
     },
@@ -23,6 +27,15 @@
     },
     "abort": {
       "already_configured": "This station is already set up."
+    }
+  },
+  "selector": {
+    "plant": {
+      "options": {
+        "lawn": "Lawn",
+        "vegetables": "Vegetables",
+        "beds": "Flower beds and shrubs"
+      }
     }
   }
 }

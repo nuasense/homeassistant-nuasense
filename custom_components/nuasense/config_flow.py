@@ -1,4 +1,4 @@
-"""Config flow: an API key, then which station."""
+"""Config flow: an API key, then which station and what the garden is."""
 
 from __future__ import annotations
 
@@ -9,13 +9,29 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 from homeassistant.const import CONF_API_KEY
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.selector import (
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .api import NuaSenseApi, NuaSenseAuthError, NuaSenseError
-from .const import CONF_BASE_URL, CONF_STATION_ID, DEFAULT_BASE_URL, DOMAIN
+from .const import (
+    CONF_ADVANCED,
+    CONF_BASE_URL,
+    CONF_PLANT,
+    CONF_SPRINKLER_RATE,
+    CONF_STATION_ID,
+    DEFAULT_BASE_URL,
+    DEFAULT_PLANT,
+    DEFAULT_SPRINKLER_RATE,
+    DOMAIN,
+    PLANTS,
+)
 
 
 class NuaSenseConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Two steps: prove the key works, then pick the station."""
+    """Two steps: prove the key works, then pick the station and the garden."""
 
     VERSION = 1
 
@@ -68,10 +84,32 @@ class NuaSenseConfigFlow(ConfigFlow, domain=DOMAIN):
                 (s.get("name") or s["station_id"] for s in self._stations if s.get("station_id") == station_id),
                 station_id,
             )
-            return self.async_create_entry(title=name, data={**self._auth, CONF_STATION_ID: station_id})
+            return self.async_create_entry(
+                title=name,
+                data={
+                    **self._auth,
+                    CONF_STATION_ID: station_id,
+                    CONF_PLANT: user_input[CONF_PLANT],
+                    CONF_SPRINKLER_RATE: float(user_input[CONF_SPRINKLER_RATE]),
+                    CONF_ADVANCED: bool(user_input[CONF_ADVANCED]),
+                },
+            )
 
         options = {s["station_id"]: (s.get("name") or s["station_id"]) for s in self._stations}
         return self.async_show_form(
             step_id="station",
-            data_schema=vol.Schema({vol.Required(CONF_STATION_ID): vol.In(options)}),
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_STATION_ID): vol.In(options),
+                    vol.Required(CONF_PLANT, default=DEFAULT_PLANT): SelectSelector(
+                        SelectSelectorConfig(
+                            options=PLANTS, translation_key="plant", mode=SelectSelectorMode.DROPDOWN
+                        )
+                    ),
+                    vol.Required(CONF_SPRINKLER_RATE, default=DEFAULT_SPRINKLER_RATE): vol.All(
+                        vol.Coerce(float), vol.Range(min=0, max=100)
+                    ),
+                    vol.Required(CONF_ADVANCED, default=False): bool,
+                }
+            ),
         )
