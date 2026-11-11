@@ -24,6 +24,8 @@ from homeassistant.util import dt as dt_util
 from .const import (
     ATTRIBUTION,
     CONF_ADVANCED,
+    CONF_CROPS,
+    CROPS,
     CONF_PLANT,
     CONF_SPRINKLER_RATE,
     DEFAULT_PLANT,
@@ -260,7 +262,10 @@ async def async_setup_entry(
         descriptions = [d for d in descriptions if d.key != "watering_minutes"]
     if cfg.get(CONF_ADVANCED):
         descriptions += list(ADVANCED)
-    async_add_entities(NuaSenseSensor(coordinator, entry, cfg, d) for d in descriptions)
+    entities: list[SensorEntity] = [NuaSenseSensor(coordinator, entry, cfg, d) for d in descriptions]
+    crops = [c for c in entry.options.get(CONF_CROPS, []) if c in CROPS]
+    entities += [NuaSenseRiskSensor(coordinator, entry, crop) for crop in crops]
+    async_add_entities(entities)
 
 
 class NuaSenseSensor(CoordinatorEntity[NuaSenseCoordinator], SensorEntity):
@@ -307,3 +312,91 @@ class NuaSenseSensor(CoordinatorEntity[NuaSenseCoordinator], SensorEntity):
         except (TypeError, ValueError, AttributeError):
             return None
         return {k: v for k, v in attrs.items() if v is not None}
+
+
+# --- disease and pest risk, one sensor per chosen crop ---------------------------
+
+RISK_STATES = ["high", "medium", "low", "not_judged"]
+_LEVEL_ORDER = {"High": 0, "Medium": 1, "Low": 2}
+
+
+def risk_state(body: dict[str, Any] | None) -> str | None:
+    """The highest level among the threats NuaSense could judge; "not_judged" when none."""
+    if not isinstance(body, dict):
+        return None
+    threats = body.get("threats")
+    if not isinstance(threats, list):
+        return None
+    judged = [
+        t for t in threats
+        if isinstance(t, dict) and t.get("status") in ("judged", "thin_data") and t.get("risk_level") in _LEVEL_ORDER
+    ]
+    if not judged:
+        return "not_judged"
+    top = min(judged, key=lambda t: _LEVEL_ORDER[t["risk_level"]])
+    return str(top["risk_level"]).lower()
+
+
+def risk_attributes(body: dict[str, Any] | None) -> dict[str, Any]:
+    """Each threat in a line a person reads; the ones not judged say why."""
+    if not isinstance(body, dict):
+        return {}
+    rows = []
+    for t in body.get("threats") or []:
+        if not isinstance(t, dict):
+            continue
+        row = {"threat": t.get("name") or t.get("threat"), "status": t.get("status")}
+        if t.get("risk_level"):
+            row["level"] = str(t["risk_level"]).lower()
+            row["percent"] = t.get("risk_percent")
+            row["data_completeness_pct"] = t.get("data_completeness_pct")
+        if t.get("what_to_check"):
+            row["what_to_check"] = t["what_to_check"]
+        if t.get("reason"):
+            row["reason"] = t["reason"]
+        rows.append(row)
+    return {
+        "threats": rows,
+        "judged": body.get("judged"),
+        "not_judged": body.get("not_judged"),
+        "hours_of_readings": body.get("hours_of_readings"),
+        "note": body.get("note"),
+    }
+
+
+class NuaSenseRiskSensor(CoordinatorEntity[NuaSenseCoordinator], SensorEntity):
+    """Disease and pest risk for one crop, from the station's own hourly weather."""
+
+    _attr_attribution = ATTRIBUTION
+    _attr_has_entity_name = True
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = RISK_STATES
+    _attr_translation_key = "disease_risk"
+    _attr_icon = "mdi:sprout-outline"
+
+    def __init__(self, coordinator: NuaSenseCoordinator, entry: ConfigEntry, crop: str) -> None:
+        super().__init__(coordinator)
+        self._crop = crop
+        self._attr_unique_id = f"{coordinator.station_id}_disease_risk_{crop}"
+        self._attr_name = f"Disease risk, {crop.replace('_', ' ')}"
+        station = coordinator.data.get("station") or {}
+        self._attr_device_info = DeviceInfo(
+            identifiers={(DOMAIN, coordinator.station_id)},
+            name=entry.title,
+            manufacturer="NuaSense",
+            model="External station",
+            configuration_url="https://platform.nuasense.com/stations",
+            hw_version=(station.get("push") or {}).get("device"),
+        )
+
+    def _body(self) -> dict[str, Any] | None:
+        return ((self.coordinator.data or {}).get("risk") or {}).get(self._crop)
+
+    @property
+    def native_value(self) -> str | None:
+        return risk_state(self._body())
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        attrs = risk_attributes(self._body())
+        return {k: v for k, v in attrs.items() if v is not None} or None

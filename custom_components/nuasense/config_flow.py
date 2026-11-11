@@ -13,7 +13,8 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.core import callback
 from homeassistant.const import CONF_API_KEY
 import random
 import re
@@ -31,6 +32,8 @@ from homeassistant.helpers.selector import (
 from .api import NuaSenseApi, NuaSenseAuthError, NuaSenseError
 from .forward import ROLES, Candidate, pick, pressure_param_for, rain_key
 from .const import (
+    CONF_CROPS,
+    CROPS,
     CONF_ADVANCED,
     CONF_BASE_URL,
     CONF_FORWARD,
@@ -49,6 +52,12 @@ class NuaSenseConfigFlow(ConfigFlow, domain=DOMAIN):
     """Two steps: prove the key works, then pick the station and the garden."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        """Crops for the disease risk, chosen after setup."""
+        return NuaSenseOptionsFlow()
 
     def __init__(self) -> None:
         self._auth: dict[str, Any] = {}
@@ -281,3 +290,23 @@ class NuaSenseConfigFlow(ConfigFlow, domain=DOMAIN):
         candidate = f"ha-{slug}-{tail}"
         return candidate if candidate not in known else f"ha-{slug}-{tail}x"
 
+
+
+class NuaSenseOptionsFlow(OptionsFlow):
+    """Which crops get a disease and pest risk sensor."""
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            crops = [c for c in user_input.get(CONF_CROPS, []) if c in CROPS]
+            return self.async_create_entry(data={**self.config_entry.options, CONF_CROPS: crops})
+        current = [c for c in self.config_entry.options.get(CONF_CROPS, []) if c in CROPS]
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_CROPS, default=current): SelectSelector(
+                        SelectSelectorConfig(options=CROPS, translation_key="crop", multiple=True, mode=SelectSelectorMode.DROPDOWN)
+                    )
+                }
+            ),
+        )

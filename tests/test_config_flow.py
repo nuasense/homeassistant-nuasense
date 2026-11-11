@@ -17,12 +17,12 @@ import pytest
 from homeassistant import config_entries
 from homeassistant.const import CONF_API_KEY
 from homeassistant.core import HomeAssistant
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.nuasense.const import CONF_FORWARD, CONF_STATION_ID, DOMAIN
+from custom_components.nuasense.const import CONF_CROPS, CONF_FORWARD, CONF_STATION_ID, DOMAIN
 from custom_components.nuasense.forward import to_query
 
 pytestmark = pytest.mark.usefixtures("enable_custom_integrations")
@@ -181,6 +181,18 @@ class StubRuntimeApi:
         StubRuntimeApi.sent.append((path, dict(params)))
         return 200
 
+    risk_asked: list[str] = []
+
+    async def disease_risk(self, _station_id, crop):
+        StubRuntimeApi.risk_asked.append(crop)
+        if crop == "tomato":
+            return {"crop": "tomato", "judged": 2, "not_judged": 1, "hours_of_readings": 700, "threats": [
+                {"threat": "tomato_late_blight", "name": "Tomato: Late Blight", "status": "judged", "risk_level": "High", "risk_percent": 72, "data_completeness_pct": 96, "what_to_check": "check leaves"},
+                {"threat": "tomato_septoria", "name": "Tomato: Septoria", "status": "judged", "risk_level": "Low", "risk_percent": 10},
+                {"threat": "tomato_root_knot", "name": "Tomato: Root knot", "status": "not_judged", "reason": "the station has not reported a soil temperature probe"},
+            ]}
+        return {"crop": crop, "judged": 0, "not_judged": 1, "threats": [{"threat": "x", "status": "not_judged", "reason": "no planting date"}]}
+
 
 async def test_a_running_entry_uploads_and_stops_on_unload(hass: HomeAssistant) -> None:
     StubRuntimeApi.sent = []
@@ -210,5 +222,49 @@ async def test_a_running_entry_uploads_and_stops_on_unload(hass: HomeAssistant) 
         assert path == "/station/kw7n-4hpd-x2vt"
         assert params["tempf"] == "70.52" and params["humidity"] == "63.0" and params["dailyrainin"] == "0.165"
         assert params["action"] == "updateraw" and params["softwaretype"].startswith("HomeAssistant-NuaSense/")
+        assert await hass.config_entries.async_unload(entry.entry_id)
+        await hass.async_block_till_done()
+
+
+async def test_options_choose_crops(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, title="Garden", data={CONF_API_KEY: "k", CONF_STATION_ID: "north-field"})
+    entry.add_to_hass(hass)
+    with patch("custom_components.nuasense.async_setup_entry", return_value=True):
+        result = await hass.config_entries.options.async_init(entry.entry_id)
+        assert result["type"] is FlowResultType.FORM and result["step_id"] == "init"
+        # The form itself refuses a crop without models.
+        with pytest.raises(InvalidData):
+            await hass.config_entries.options.async_configure(result["flow_id"], {CONF_CROPS: ["tomato", "not-a-crop"]})
+        result = await hass.config_entries.options.async_configure(result["flow_id"], {CONF_CROPS: ["tomato", "potato"]})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert entry.options[CONF_CROPS] == ["tomato", "potato"]
+
+
+async def test_disease_risk_sensors_show_the_highest_judged_level(hass: HomeAssistant) -> None:
+    StubRuntimeApi.risk_asked = []
+    entry = MockConfigEntry(
+        domain=DOMAIN, title="Garden", unique_id=f"{DOMAIN}:ha-gw2000a-abcd",
+        data={CONF_API_KEY: "nua_live_test", "base_url": "https://api.nuasense.com", CONF_STATION_ID: "ha-gw2000a-abcd",
+              "plant": "lawn", "sprinkler_mm_per_h": 10.0, "advanced": False},
+        options={CONF_CROPS: ["tomato", "potato"]},
+    )
+    entry.add_to_hass(hass)
+    with patch("custom_components.nuasense.NuaSenseApi", StubRuntimeApi):
+        assert await hass.config_entries.async_setup(entry.entry_id)
+        await hass.async_block_till_done()
+        reg = er.async_get(hass)
+        tomato = reg.async_get_entity_id("sensor", DOMAIN, "ha-gw2000a-abcd_disease_risk_tomato")
+        potato = reg.async_get_entity_id("sensor", DOMAIN, "ha-gw2000a-abcd_disease_risk_potato")
+        assert tomato and potato
+        t = hass.states.get(tomato)
+        assert t.state == "high"
+        assert t.attributes["threats"][0]["what_to_check"] == "check leaves"
+        assert t.attributes["threats"][2]["status"] == "not_judged" and "level" not in t.attributes["threats"][2]
+        assert hass.states.get(potato).state == "not_judged"
+        assert sorted(StubRuntimeApi.risk_asked) == ["potato", "tomato"]
+        # A second refresh within the hour asks NuaSense nothing new.
+        coordinator = hass.data[DOMAIN][entry.entry_id]
+        await coordinator.async_refresh()
+        assert len(StubRuntimeApi.risk_asked) == 2
         assert await hass.config_entries.async_unload(entry.entry_id)
         await hass.async_block_till_done()

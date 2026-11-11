@@ -105,6 +105,10 @@ class NuaSenseApi:
         stations = body.get("stations")
         return [s for s in stations if isinstance(s, dict)] if isinstance(stations, list) else []
 
+    async def disease_risk(self, station_id: str, crop: str) -> dict[str, Any]:
+        """Disease and pest risk for one crop at this station, from its own hours."""
+        return await self._get(f"/api/nuasense/v1/ingest/disease-risk?station_id={station_id}&crop={crop}")
+
     async def first_look(self, station_id: str) -> dict[str, Any]:
         return await self._get(f"/api/nuasense/v1/ingest/first-look?station_id={station_id}")
 

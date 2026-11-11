@@ -38,6 +38,12 @@ Switch on **Advanced: agronomy values** for farms, vineyards and nurseries: next
 
 Polled every 15 minutes.
 
+### Disease and pest risk
+
+Open the integration's **Configure** and pick the crops you grow (potato, tomato, onion, cabbage, kale, pepper, carrot and more). Each crop gets a sensor: `high`, `medium`, `low` or `not_judged`, the highest risk your station's own weather gives it, computed hourly with NuaSense's crop models (late blight, early blight, mildews, rusts and others). The attributes list every threat with its level, how complete the data was and what to check on the plants.
+
+Threats your station cannot judge come back as `not_judged` with the reason, never as `low`: soil-borne diseases need a soil probe, and insect clocks need a planting date. It is weather risk, not a diagnosis: a high level means conditions favour the disease, so look at the crop.
+
 ## Sending a station Home Assistant already has
 
 Already have an Ecowitt, Netatmo, Ambient, Tempest, WeatherLink or any other weather station in Home Assistant? Choose **A weather station Home Assistant already shows** in the setup dialog. The integration finds the station's outdoor temperature, humidity, pressure, wind, rain and solar sensors (you can change each one), registers the station on your NuaSense account with the position set in Home Assistant, and sends its readings to NuaSense every five minutes over HTTPS. No console, no forwarding rule. The station counts as one of the free stations on the account.

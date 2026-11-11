@@ -70,6 +70,50 @@
         "vegetables": "Vegetables",
         "beds": "Flower beds and shrubs"
       }
+    },
+    "crop": {
+      "options": {
+        "potato": "Potato",
+        "tomato": "Tomato",
+        "onion": "Onion",
+        "cabbage": "Cabbage",
+        "kale": "Kale",
+        "pepper": "Pepper (capsicum, chilli)",
+        "carrot": "Carrot",
+        "swiss_chard": "Swiss chard",
+        "nightshade": "African nightshade",
+        "cowpea": "Cowpea",
+        "sweet_potato": "Sweet potato",
+        "amaranth": "Amaranth",
+        "taro": "Taro",
+        "barley": "Barley",
+        "coffee": "Coffee",
+        "avocado": "Avocado",
+        "pineapple": "Pineapple"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Disease and pest risk",
+        "description": "Pick the crops you grow. Each gets a sensor with the highest disease or pest risk your station's weather gives it, and the threats behind it. Threats your station cannot judge (soil-borne ones without a soil probe, insect clocks without a planting date) are listed as not judged, never as low.",
+        "data": {
+          "crops": "Crops"
+        }
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "disease_risk": {
+        "state": {
+          "high": "High",
+          "medium": "Medium",
+          "low": "Low",
+          "not_judged": "Not judged"
+        }
+      }
     }
   }
 }

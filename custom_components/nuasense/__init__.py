@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import NuaSenseApi
-from .const import CONF_BASE_URL, CONF_FORWARD, CONF_STATION_ID, DEFAULT_BASE_URL, DOMAIN, INTEGRATION_VERSION
+from .const import CONF_BASE_URL, CONF_CROPS, CONF_FORWARD, CONF_STATION_ID, DEFAULT_BASE_URL, DOMAIN, INTEGRATION_VERSION
 from .coordinator import NuaSenseCoordinator
 from .forwarder import StationForwarder
 
@@ -37,12 +37,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         forwarder.start()
         entry.async_on_unload(forwarder.stop)
 
-    coordinator = NuaSenseCoordinator(hass, api, entry.data[CONF_STATION_ID])
+    coordinator = NuaSenseCoordinator(hass, api, entry.data[CONF_STATION_ID], entry.options.get(CONF_CROPS, []))
     await coordinator.async_config_entry_first_refresh()
+    # Choosing crops in the options dialog reloads the entry, which adds their sensors.
+    entry.async_on_unload(entry.add_update_listener(_reload_on_options))
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
+
+
+async def _reload_on_options(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
