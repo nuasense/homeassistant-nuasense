@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect to NuaSense",
-        "description": "An API key from platform.nuasense.com → API Keys, with the ingest:write scope. It only reads your own stations here.",
+        "description": "An API key from platform.nuasense.com → API Keys, with the ingest:write scope. It reads your NuaSense stations and, if you choose, registers a station Home Assistant already has.",
         "data": {
           "api_key": "API key",
           "base_url": "API address"
@@ -18,12 +18,46 @@
           "sprinkler_mm_per_h": "Sprinkler rate (mm per hour)",
           "advanced": "Advanced: agronomy values"
         }
+      },
+      "source": {
+        "title": "Which station?",
+        "menu_options": {
+          "station": "A station already on my NuaSense account",
+          "ha_station": "A weather station Home Assistant already shows"
+        }
+      },
+      "ha_station": {
+        "title": "Send a station to NuaSense",
+        "description": "These devices have an outdoor temperature and humidity. Pick the weather station to send.",
+        "data": {
+          "device": "Weather station"
+        }
+      },
+      "ha_sensors": {
+        "title": "{station}: what is sent",
+        "description": "These sensors go to NuaSense every five minutes, together with the position set in Home Assistant (Settings → System → General). Temperature and humidity are required; leave out what you do not have. The station counts as one of the free stations on your NuaSense account.\n\nWhat happens with the data: NuaSense stores the readings and the position to compute your frost, watering and spray values. The readings are also used aggregated and anonymised to improve forecasts and models; they are never passed on individually without your consent. Remove the integration to stop sending, and delete the station in the NuaSense console to delete its data.",
+        "data": {
+          "temperature": "Outdoor temperature",
+          "humidity": "Outdoor humidity",
+          "pressure": "Air pressure",
+          "wind_speed": "Wind speed",
+          "wind_gust": "Wind gust",
+          "wind_direction": "Wind direction",
+          "rain": "Rain today (a running total, not a rate)",
+          "solar": "Solar radiation (W/m²)",
+          "plant": "The garden is mostly",
+          "sprinkler_mm_per_h": "Sprinkler rate (mm per hour)",
+          "advanced": "Advanced: agronomy values"
+        }
       }
     },
     "error": {
       "invalid_auth": "NuaSense did not accept this key.",
       "cannot_connect": "NuaSense could not be reached.",
-      "no_stations": "This account has no stations yet. Add one in the console under External stations."
+      "no_stations": "This account has no stations yet, and Home Assistant shows no weather station to send. Add one in the NuaSense console under External stations.",
+      "need_temperature_humidity": "Temperature and humidity are needed.",
+      "key_cannot_write": "This key may not register a station. Create a key with the ingest:write scope.",
+      "station_limit": "This NuaSense account has reached its number of stations."
     },
     "abort": {
       "already_configured": "This station is already set up."

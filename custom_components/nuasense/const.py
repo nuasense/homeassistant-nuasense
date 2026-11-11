@@ -1,12 +1,16 @@
 """Constants for the NuaSense integration."""
 
 DOMAIN = "nuasense"
+INTEGRATION_VERSION = "0.3.0"
 
 CONF_BASE_URL = "base_url"
 CONF_STATION_ID = "station_id"
 CONF_PLANT = "plant"
 CONF_SPRINKLER_RATE = "sprinkler_mm_per_h"
 CONF_ADVANCED = "advanced"
+# Forwarding a station Home Assistant already has (set up in the dialog).
+CONF_FORWARD = "forward"            # {"push_path", "entities": {role: entity_id}, "rain_param", "pressure_param"}
+FORWARD_INTERVAL_SECONDS = 300
 
 DEFAULT_BASE_URL = "https://api.nuasense.com"
 # What the garden mostly is; decides the watering sensor's crop coefficient.
