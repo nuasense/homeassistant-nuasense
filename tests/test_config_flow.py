@@ -78,7 +78,7 @@ def _ecowitt_station(hass: HomeAssistant) -> str:
 
 
 @pytest.fixture(autouse=True)
-def verify_cleanup(event_loop):
+def verify_cleanup():
     """The harness's own check, without its thread rule.
 
     Once an entry is saved, Home Assistant's executor shutdown leaves a thread
@@ -87,6 +87,8 @@ def verify_cleanup(event_loop):
     """
     import asyncio
 
+    # the loop as the harness takes it; pytest-asyncio 1.x has no event_loop fixture
+    event_loop = asyncio.get_event_loop()
     before = asyncio.all_tasks(event_loop)
     yield
     event_loop.run_until_complete(event_loop.shutdown_default_executor())

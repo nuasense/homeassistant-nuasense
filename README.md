@@ -28,6 +28,7 @@ Then Settings → Devices & services → Add integration → **NuaSense**.
 | Watering time today | minutes at your sprinkler's rate — ready for an automation that opens a valve |
 | Rain next 24 h | mm forecast for your position |
 | Plausibility | `plausible` or `implausible`: your latest reading against the forecast model for that hour. It flags only differences no weather explains (more than 5 °C), like a wrong unit or a sensor indoors, and names no cause |
+| Data quality | `A` to `D`, graded once a day: every value is checked as it arrives, and the station is compared with the weather model, the nearest official station and stations nearby. Attributes: what is wrong and what to fix, one line per sensor. `not_graded` until there is a day of data |
 | Last upload | when the station last sent, and from what |
 
 Watering is a daily balance, for an automation that runs once a day: water when the sensor is above 0, for the minutes it says.

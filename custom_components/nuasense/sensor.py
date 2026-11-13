@@ -33,6 +33,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import NuaSenseCoordinator
+from .quality import STATES as QUALITY_STATES, quality_attributes, quality_of, quality_state
 
 Config = dict[str, Any]
 
@@ -158,6 +159,15 @@ GARDEN: tuple[NuaSenseSensorDescription, ...] = (
             "difference_c": _plausibility(d).get("diff_c"),
             "threshold_c": _plausibility(d).get("threshold_c"),
         },
+    ),
+    NuaSenseSensorDescription(
+        key="data_quality",
+        name="Data quality",
+        icon="mdi:shield-check-outline",
+        device_class=SensorDeviceClass.ENUM,
+        options=QUALITY_STATES,
+        value=lambda d, c: quality_state(quality_of(d)),
+        attributes=lambda d, c: quality_attributes(quality_of(d)),
     ),
     NuaSenseSensorDescription(
         key="last_upload",
